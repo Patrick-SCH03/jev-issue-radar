@@ -7,6 +7,9 @@
 
 A read-only triage dashboard powered by TypeSafe Jev through OpenRouter.
 
+[![CI](https://github.com/Patrick-SCH03/jev-issue-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/Patrick-SCH03/jev-issue-radar/actions/workflows/ci.yml)
+[![Listed on Awesome Jev](https://img.shields.io/badge/Awesome_Jev-listed-2261d8)](https://github.com/logicrw/awesome-jev-projects)
+
 [Quickstart](#quickstart) · [How it works](#how-it-works) · [Validation](docs/VALIDATION.md) · [Contributing](CONTRIBUTING.md)
 </div>
 

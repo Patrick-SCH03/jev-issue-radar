@@ -7,9 +7,9 @@ Date: 2026-09-20. This record covers execution, integration, and failure handlin
 | Check | Command | Result |
 |---|---|---|
 | Logic and local HTTP integration | node --test tests/check_all.mjs | 36 passed, 0 failed |
-| Syntax | node scripts/check-syntax.mjs | Module files and the inline HTML script |
+| Syntax | node scripts/check-syntax.mjs | 11 files passed, including the inline HTML script |
 | Whitespace | git diff --check | Passed |
-| Browser interactions | node scripts/browser-smoke.mjs | 16 checks passed with headless Edge before localization; rechecked for the English UI |
+| Browser interactions | node scripts/browser-smoke.mjs | 16 checks passed with headless Edge, including a full rerun for the English UI |
 
 Browser coverage: explicit demo labels, candidate filters, full reports, JSON downloads, free candidate preview, mocked analysis, invalid input, and theme controls. Six viewport/theme combinations (1440, 768, 375 pixels × light/dark) were checked for horizontal overflow. Runtime errors: zero. Desktop and mobile screenshots were also inspected visually.
 
@@ -63,3 +63,9 @@ The default UI and its illustrative cases were later translated into English. Th
 ## Still unverified
 
 Independent labels on real repository issues; retrieval recall@5; duplicate precision and misses; confidence calibration; large repositories, cross-language retrieval, long reports; comparison with other models. No claims of exhaustive scanning, automatic issue resolution, or calibrated confidence are made.
+
+## Publication
+
+The public repository is https://github.com/Patrick-SCH03/jev-issue-radar. Remote CI passed for the submitted source commit 6ea5391aa229ce77466774d2ee6af1abb631bb7a.
+
+[Awesome Jev submission #38](https://github.com/logicrw/awesome-jev-projects/issues/38) passed the catalog's source review, validation, and ingestion workflow. The project was added to its README and source catalog on 2026-09-20, under Domain & Vertical Tools. Catalog inclusion is a source review, not an independent runtime or model-quality endorsement.
