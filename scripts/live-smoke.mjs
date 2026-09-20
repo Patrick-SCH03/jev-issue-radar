@@ -1,6 +1,7 @@
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {compareIssues} from '../lib/jev.mjs';
 import {demoSource, demoIssues, demoDecision} from '../data/evaluation-fixtures.mjs';
+import {readJson} from '../lib/http.mjs';
 
 // Opt-in only. Four synthetic pairs, no automatic retries and no GitHub writes.
 if (process.env.JEV_SMOKE_APPROVED !== '1') throw new Error('Set JEV_SMOKE_APPROVED=1 only after approving this paid smoke test.');
@@ -13,16 +14,17 @@ let previous;
 try {previous = JSON.parse(await readFile(path, 'utf8'));} catch (error) {if (error.code !== 'ENOENT') throw error;}
 if (previous?.attempts?.length) throw new Error('A smoke report already exists. Refusing an accidental second paid run.');
 
-const pricingResponse = await fetch('https://openrouter.ai/api/v1/models/typesafe/jev-1.13/endpoints', {signal: AbortSignal.timeout(15000), redirect: 'error'});
+const pricingSignal = AbortSignal.timeout(15000);
+const pricingResponse = await fetch('https://openrouter.ai/api/v1/models/typesafe/jev-1.13/endpoints', {signal: pricingSignal, redirect: 'error'});
 if (!pricingResponse.ok) throw new Error('Could not verify current Jev pricing');
-const pricingData = await pricingResponse.json();
+const pricingData = await readJson(pricingResponse, {maxBytes: 512 * 1024, signal: pricingSignal});
 const endpoints = pricingData?.data?.endpoints;
 if (!Array.isArray(endpoints) || !endpoints.length) throw new Error('Missing provider pricing');
 for (const endpoint of endpoints) {
   const input = Number(endpoint.pricing?.prompt), output = Number(endpoint.pricing?.completion);
   if (!Number.isFinite(input) || input < 0 || input > 0.042 / 1e6 || output !== 0) throw new Error('Unexpected pricing: paid smoke test stopped before inference');
 }
-const report = {createdAt: new Date().toISOString(), capUsd, model: 'typesafe/jev-1.13', kind: 'synthetic integration smoke; not a quality benchmark', attempts: []};
+const report = {createdAt: new Date().toISOString(), inputLanguage: 'en', fixtureVersion: 'english-v1', capUsd, model: 'typesafe/jev-1.13', kind: 'synthetic integration smoke; not a quality benchmark', attempts: []};
 const save = () => writeFile(path, JSON.stringify(report, null, 2));
 for (const candidate of demoIssues) {
   const reserved = report.attempts.reduce((sum, x) => sum + (x.costUsd ?? reserveUsd), 0);

@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import http from 'node:http';
+import {readFile} from 'node:fs/promises';
+import {readJson} from '../lib/http.mjs';
 import {parseIssueUrl,normalizeIssue,rankCandidates,evidenceLines,pairState,decisionQuestions,parseDecision,LIMITS} from '../lib/core.mjs';
 import {compareIssues} from '../lib/jev.mjs';
 import {loadRepositoryIssue} from '../lib/github.mjs';
@@ -18,7 +20,7 @@ async function app(t,options={}) {
   t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));
   const base='http://127.0.0.1:'+server.address().port;
   const status=await (await fetch(base+'/api/status')).json();
-  const post=(path,payload={},headers={})=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','X-Radar-Token':status.csrf,...headers},body:JSON.stringify(payload)});
+  const post=(path,payload={url:demoSource.url},headers={})=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','X-Radar-Token':status.csrf,...headers},body:JSON.stringify(payload)});
   return{server,base,status,post};
 }
 
@@ -106,7 +108,10 @@ test('provider failures are explicit and never expose response bodies',async()=>
   await assert.rejects(()=>compareIssues(demoSource,demoIssues[0],{apiKey:'test',fetchImpl:async()=>{throw Error('network');}}),/connection/);
 });
 test('late response bodies cannot be accepted after the deadline',async()=>{
-  await assert.rejects(()=>compareIssues(demoSource,demoIssues[0],{apiKey:'test',timeoutMs:5,fetchImpl:async()=>({ok:true,json:async()=>{await new Promise(r=>setTimeout(r,20));return valid();}})}),/deadline/);
+  // Keep the event loop alive because AbortSignal.timeout uses an unref'ed timer.
+  const keepAlive=setInterval(()=>{},1000);let cancelled=false;
+  try {await assert.rejects(()=>compareIssues(demoSource,demoIssues[0],{apiKey:'test',timeoutMs:20,fetchImpl:async()=>new Response(new ReadableStream({cancel(){cancelled=true;}}))}),/deadline/);assert.equal(cancelled,true);}
+  finally {clearInterval(keepAlive);}
 });
 test('public GitHub importer paginates, omits PRs, and uses no authorization',async()=>{
   const urls=[];const fetchImpl=async(url,options)=>{urls.push(url);assert.equal(options.headers.Authorization,undefined);assert.equal(options.redirect,'error');if(url.includes('/issues/1'))return Response.json(raw());if(url.endsWith('page=1'))return Response.json(Array.from({length:100},(_,i)=>raw(i+2,{...(i%2?{pull_request:{}}:{})})));return Response.json([raw(200)]);};
@@ -140,32 +145,139 @@ test('local server never serves source files, environment files or parent paths'
   const a=await app(t);for(const path of ['/server.mjs','/.env','/package.json','/../README.md'])assert.equal((await fetch(a.base+path)).status,404);
 });
 test('live mode is opt-in, independent of key availability',async t=>{
-  const a=await app(t,{env:{OPENROUTER_API_KEY:'test-key'}});const preview=await(await a.post('/api/preview',{})).json();
+  const a=await app(t,{env:{OPENROUTER_API_KEY:'test-key'}});const preview=await(await a.post('/api/preview')).json();
   assert.equal((await a.post('/api/analyze',{id:preview.id})).status,403);assert.equal(a.status.liveEnabled,false);
 });
 test('repeated analysis returns cached results without duplicate billing',async t=>{
   let calls=0;const a=await app(t,{env:{JEV_ENABLE_LIVE:'1',OPENROUTER_API_KEY:'test'},compare:async(_,candidate)=>{calls++;return demoDecision(candidate);}});
-  const preview=await(await a.post('/api/preview',{})).json();
+  const preview=await(await a.post('/api/preview')).json();
   for(let i=0;i<2;i++){const result=await(await a.post('/api/analyze',{id:preview.id})).json();assert.equal(result.mode,'live');assert.equal(result.candidates[0].decision.relation,'duplicate');}
   assert.equal(calls,4);
 });
 test('partial provider failure is preserved as failure, never distinct',async t=>{
   const a=await app(t,{env:{JEV_ENABLE_LIVE:'1',OPENROUTER_API_KEY:'test'},compare:async(_,candidate)=>{if(candidate.number===219)throw Error('provider unavailable');return demoDecision(candidate);}});
-  const preview=await(await a.post('/api/preview',{})).json();const result=await(await a.post('/api/analyze',{id:preview.id})).json();
+  const preview=await(await a.post('/api/preview')).json();const result=await(await a.post('/api/analyze',{id:preview.id})).json();
   assert.equal(result.candidates.find(x=>x.issue.number===219).decision.relation,'failed');
 });
 test('call limit is checked before any part of a new batch is billed',async t=>{
   let calls=0;const a=await app(t,{env:{JEV_ENABLE_LIVE:'1',OPENROUTER_API_KEY:'test',JEV_MAX_CALLS:'3'},compare:async()=>{calls++;}});
-  const preview=await(await a.post('/api/preview',{})).json();assert.equal((await a.post('/api/analyze',{id:preview.id})).status,429);assert.equal(calls,0);
+  const preview=await(await a.post('/api/preview')).json();assert.equal((await a.post('/api/analyze',{id:preview.id})).status,429);assert.equal(calls,0);
+});
+
+test('invalid call limits cannot silently enable the default paid allowance',()=>{
+  for(const limit of ['0','-1','3oops','1.5','101',''])assert.throws(()=>createApp({env:{JEV_MAX_CALLS:limit}}),/JEV_MAX_CALLS must be/);
 });
 test('expired previews cannot be analyzed',async t=>{
   let clock=1000;const a=await app(t,{env:{JEV_ENABLE_LIVE:'1',OPENROUTER_API_KEY:'test'},now:()=>clock});
-  const preview=await(await a.post('/api/preview',{})).json();clock+=600001;
+  const preview=await(await a.post('/api/preview')).json();clock+=600001;
   assert.equal((await a.post('/api/analyze',{id:preview.id})).status,410);
 });
 test('concurrent preview is rejected while an existing request is active',async t=>{
   let release,entered;const entry=new Promise(r=>entered=r);const wait=new Promise(r=>release=r);
   const a=await app(t,{load:async()=>{entered();await wait;return loaded();}});
-  const first=a.post('/api/preview',{});await entry;
-  assert.equal((await a.post('/api/preview',{})).status,409);release();assert.equal((await first).status,200);
+  const first=a.post('/api/preview');await entry;
+  assert.equal((await a.post('/api/preview')).status,409);release();assert.equal((await first).status,200);
+});
+
+test('malformed request targets return 400 and leave the process usable',async t=>{
+  const a=await app(t);
+  for(const path of ['//[','http://[','/\\evil.example']){
+    const status=await new Promise((resolve,reject)=>{http.get({hostname:'127.0.0.1',port:a.server.address().port,path},res=>{res.resume();resolve(res.statusCode);}).on('error',reject);});
+    assert.equal(status,400);
+  }
+  assert.equal((await fetch(a.base+'/api/status')).status,200);
+});
+
+test('request schemas and byte limits fail before importing any issues',async t=>{
+  let calls=0;const a=await app(t,{load:async()=>{calls++;return loaded();}});
+  for(const input of [null,[],1,{}, {url:42},{url:'x'.repeat(2049)}])assert.equal((await a.post('/api/preview',input)).status,400);
+  assert.equal((await a.post('/api/preview',{url:'x'.repeat(9000)})).status,413);
+  assert.equal(calls,0);
+});
+
+test('chunked request bodies cannot bypass the byte cap',async t=>{
+  const a=await app(t);
+  const status=await new Promise((resolve,reject)=>{
+    const req=http.request(a.base+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Radar-Token':a.status.csrf,'Transfer-Encoding':'chunked'}},res=>{res.resume();resolve(res.statusCode);});
+    req.on('error',reject);req.write('x'.repeat(5000));req.end('x'.repeat(5000));
+  });
+  assert.equal(status,413);assert.equal((await a.post('/api/preview')).status,200);
+});
+
+test('unfinished bodies reserve the slot, time out, and release it',async t=>{
+  const a=await app(t,{bodyTimeoutMs:150});
+  let started;
+  const waiting=new Promise(resolve=>started=resolve);
+  a.server.once('request',()=>started());
+  const slow=new Promise((resolve,reject)=>{
+    const req=http.request(a.base+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Radar-Token':a.status.csrf,'Content-Length':100}},res=>{res.resume();resolve(res.statusCode);});
+    req.on('error',reject);req.flushHeaders();req.write('{');
+  });
+  await waiting;assert.equal((await a.post('/api/preview')).status,409);
+  assert.equal(await slow,408);assert.equal((await a.post('/api/preview')).status,200);
+});
+
+test('disconnect during upload releases the slot without crashing',async t=>{
+  const a=await app(t);let started;
+  const waiting=new Promise(resolve=>started=resolve);a.server.once('request',()=>started());
+  const req=http.request(a.base+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json','X-Radar-Token':a.status.csrf,'Content-Length':100}});
+  req.on('error',()=>{});req.write('{');await waiting;
+  req.destroy();
+  // A subsequent request may arrive before the close event; retry only the busy response.
+  let status;
+  for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,5));status=(await a.post('/api/preview')).status;if(status!==409)break;}
+  assert.equal(status,200);
+});
+
+test('HTML uses fresh nonces and no unrestricted inline scripts',async t=>{
+  const a=await app(t);const nonces=[];
+  for(let i=0;i<2;i++){
+    const response=await fetch(a.base);const csp=response.headers.get('content-security-policy');
+    assert.ok(!csp.includes('unsafe-inline'));assert.match(csp,/frame-ancestors 'none'/);
+    const nonce=csp.match(/script-src 'nonce-([^']+)'/)[1];nonces.push(nonce);
+    const html=await response.text();assert.ok(html.includes(`<script nonce="${nonce}">`));assert.ok(html.includes(`<style nonce="${nonce}">`));
+  }
+  assert.notEqual(nonces[0],nonces[1]);
+  assert.equal((await fetch(a.base+'/api/status',{headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
+});
+
+test('upstream JSON byte limits reject declared and streamed overflow',async()=>{
+  await assert.rejects(()=>readJson(new Response('{}',{headers:{'Content-Length':'9999'}}),{maxBytes:100}),/too large/);
+  let cancelled=false;
+  const body=new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('x'.repeat(101)));},cancel(){cancelled=true;}});
+  await assert.rejects(()=>readJson(new Response(body),{maxBytes:100}),/too large/);assert.equal(cancelled,true);
+  assert.deepEqual(await readJson(new Response('{"ok":true}'),{maxBytes:11}),{ok:true});
+});
+
+test('upstream invalid JSON and oversized payloads expose no raw content',async()=>{
+  for(const response of [new Response('private-invalid-json'),new Response(JSON.stringify({...valid(),padding:'x'.repeat(256*1024)}))]){
+    await assert.rejects(()=>compareIssues(demoSource,demoIssues[0],{apiKey:'test',fetchImpl:async()=>response}),error=>/read the Jev response/.test(error.message)&&!error.message.includes('private-invalid-json'));
+  }
+  await assert.rejects(()=>loadRepositoryIssue(raw().html_url,{fetchImpl:async()=>new Response('x'.repeat(8*1024*1024+1))}),/8 MiB/);
+  await assert.rejects(()=>loadRepositoryIssue(raw().html_url,{fetchImpl:async url=>Response.json(url.includes('/issues/1')?raw():Array.from({length:101},(_,i)=>raw(i+2)))}),/invalid issue list/);
+});
+
+test('issue metadata has bounded labels and tolerates malformed label collections',()=>{
+  assert.deepEqual(normalizeIssue(raw(1,{labels:{name:'bug'}})).labels,[]);
+  const issue=normalizeIssue(raw(1,{labels:Array(100).fill('x'.repeat(10000)),updated_at:'x'.repeat(1000)}));
+  assert.equal(issue.labels.length,10);assert.equal(issue.labels[0].length,100);assert.equal(issue.updatedAt.length,40);
+});
+
+test('retrieval weights, normalization and query-order overlap stay stable',()=>{
+  const source=normalizeIssue(raw(1,{title:'alpha beta',body:'gamma'}));
+  const a=normalizeIssue(raw(2,{title:'alpha',body:'beta gamma delta'}));
+  const b=normalizeIssue(raw(3,{title:'beta',body:'alpha delta'}));
+  const results=rankCandidates(source,[b,a]);
+  const common=Math.log(1+2/3),rare=Math.log(1+2/2);
+  assert.deepEqual(results.map(x=>[x.issue.number,x.retrievalScore,x.overlap]),[
+    [2,Number(((3*common+rare)/Math.sqrt(1.04)).toFixed(4)),['alpha','beta','gamma']],
+    [3,Number((3*common/Math.sqrt(1.03)).toFixed(4)),['alpha','beta']],
+  ]);
+});
+
+test('translated report keeps measured choices, costs and original provenance explicit',async()=>{
+  const report=JSON.parse(await readFile(new URL('../docs/live-smoke-2026-09-20.json',import.meta.url),'utf8'));
+  assert.equal(report.presentation.translated,true);assert.match(report.presentation.originalReport,/2c6a807/);
+  assert.deepEqual(report.attempts.map(x=>x.relation),['duplicate','distinct','distinct','related']);
+  assert.equal(report.matches,2);assert.ok(Math.abs(report.totalKnownCostUsd-0.000294084)<1e-12);
 });

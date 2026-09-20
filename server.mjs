@@ -1,6 +1,6 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
-import {randomUUID} from 'node:crypto';
+import {randomUUID, randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 import {rankCandidates} from './lib/core.mjs';
@@ -8,48 +8,74 @@ import {loadRepositoryIssue} from './lib/github.mjs';
 import {compareIssues} from './lib/jev.mjs';
 import {demoSource, demoIssues, demoDecision} from './data/demo.mjs';
 
-export const APP_VER = '0.1.0';
-export function createApp({env = process.env, load = loadRepositoryIssue, compare = compareIssues, now = Date.now} = {}) {
+export const APP_VER = '0.1.1';
+export function createApp({env = process.env, load = loadRepositoryIssue, compare = compareIssues, now = Date.now, bodyTimeoutMs = 5000} = {}) {
   const snapshots = new Map();
   const csrf = randomUUID();
   let busy = false, usedCalls = 0;
-  const maxCalls = Math.min(100, Math.max(1, Number.parseInt(env.JEV_MAX_CALLS ?? '20', 10) || 20));
+  const maxCalls = Number(env.JEV_MAX_CALLS ?? '20');
+  if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 100) throw new Error('JEV_MAX_CALLS must be an integer from 1 to 100.');
   const liveEnabled = env.JEV_ENABLE_LIVE === '1';
   const keyConfigured = Boolean(env.OPENROUTER_API_KEY);
   const html = new URL('./index.html', import.meta.url);
   const staticFiles = new Map([['/', [html, 'text/html; charset=utf-8']], ['/index.html', [html, 'text/html; charset=utf-8']], ['/docs/brand.svg', [new URL('./docs/brand.svg', import.meta.url), 'image/svg+xml']]]);
-  const json = (res, status, data) => {res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8'}); res.end(JSON.stringify(data));};
-  async function body(req) {
-    let size = 0; const chunks = [];
-    for await (const chunk of req) {size += chunk.length; if (size > 8192) throw new Error('Request body is too large.'); chunks.push(chunk);}
-    try {return JSON.parse(Buffer.concat(chunks).toString('utf8'));} catch {throw new Error('Invalid request format.');}
+  const json = (res, status, data) => {if (res.destroyed || res.writableEnded) return; res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8'}); res.end(JSON.stringify(data));};
+  function body(req) {
+    return new Promise((resolveBody, reject) => {
+      let size = 0, finished = false; const chunks = [];
+      const fail = (message, status = 400) => finish(Object.assign(new Error(message), {status}));
+      const onData = chunk => {size += chunk.length; if (size > 8192) fail('Request body is too large.', 413); else chunks.push(chunk);};
+      const onEnd = () => {
+        let input;
+        try {input = JSON.parse(Buffer.concat(chunks).toString('utf8'));} catch {return fail('Invalid request format.');}
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return fail('Request must be a JSON object.');
+        finish(null, input);
+      };
+      const onError = () => fail('The request was interrupted.');
+      const timer = setTimeout(() => fail('Request body deadline exceeded.', 408), bodyTimeoutMs);
+      function finish(error, value) {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        req.off('data', onData); req.off('end', onEnd); req.off('aborted', onError);
+        if (error) {req.resume(); reject(error);} else resolveBody(value);
+      }
+      req.on('data', onData); req.once('end', onEnd); req.once('error', onError); req.once('aborted', onError);
+      if (Number(req.headers['content-length']) > 8192) fail('Request body is too large.', 413);
+    });
   }
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer({maxHeaderSize: 8192, headersTimeout: 5000, requestTimeout: 10000, connectionsCheckingInterval: 1000}, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    const nonce = randomBytes(18).toString('base64');
+    res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
     const address = server.address();
     const hosts = [`127.0.0.1:${address.port}`, `localhost:${address.port}`];
     if (!hosts.includes(req.headers.host)) return json(res, 403, {error: 'Use the local server address.'});
     const origin = `http://${req.headers.host}`;
     if (req.headers.origin && req.headers.origin !== origin) return json(res, 403, {error: 'Requests from other sites are not allowed.'});
-    const path = new URL(req.url, origin).pathname;
+    if (req.headers['sec-fetch-site'] === 'cross-site') return json(res, 403, {error: 'Requests from other sites are not allowed.'});
     try {
+      if (!req.url.startsWith('/') || req.url.startsWith('//') || req.url.includes('\\')) throw new Error('Invalid request target.');
+      const path = new URL(req.url, origin).pathname;
       if (req.method === 'GET' && staticFiles.has(path)) {
         const [file, contentType] = staticFiles.get(path);
-        const bytes = await readFile(file); res.writeHead(200, {'Content-Type': contentType}); return res.end(bytes);
+        let bytes = await readFile(file);
+        if (contentType.startsWith('text/html')) bytes = bytes.toString('utf8').replace(/<(script|style)>/g, `<$1 nonce="${nonce}">`);
+        res.writeHead(200, {'Content-Type': contentType}); return res.end(bytes);
       }
       if (req.method === 'GET' && path === '/api/status') return json(res, 200, {version: APP_VER, liveEnabled, keyConfigured, remainingCalls: maxCalls - usedCalls, csrf});
       if (req.method === 'GET' && path === '/api/demo') return json(res, 200, {mode: 'demo', source: demoSource, candidates: rankCandidates(demoSource, demoIssues).map(x => ({...x, decision: demoDecision(x.issue)})).sort((a,b) => ({duplicate:0,related:1,insufficient:2,distinct:3}[a.decision.relation] - {duplicate:0,related:1,insufficient:2,distinct:3}[b.decision.relation])), coverage: {repository: 'example/atlas-notes', issueCount: 4, limited: false, description: 'Four synthetic issues with hand-authored decisions. These are not measured Jev results.'}});
       if (req.method !== 'POST' || !['/api/preview', '/api/analyze'].includes(path)) return json(res, 404, {error: 'Page not found.'});
       if (req.headers['x-radar-token'] !== csrf || !req.headers['content-type']?.startsWith('application/json')) return json(res, 403, {error: 'Refresh the page and try again.'});
-      const input = await body(req);
-      if (busy) return json(res, 409, {error: 'Another request is in progress. Please wait.'});
+      if (busy) {res.shouldKeepAlive = false; return json(res, 409, {error: 'Another request is in progress. Please wait.'});}
       busy = true;
       try {
+        const input = await body(req);
         for (const [id, item] of snapshots) if (now() - item.createdAt > 600000) snapshots.delete(id);
         if (path === '/api/preview') {
+          if (typeof input.url !== 'string' || input.url.length > 2048) throw new Error('Enter a valid GitHub issue URL.');
           const result = await load(input.url);
           const candidates = rankCandidates(result.source, result.issues);
           const id = randomUUID();
@@ -77,8 +103,11 @@ export function createApp({env = process.env, load = loadRepositoryIssue, compar
         snapshots.set(snapshot.id, result);
         return json(res, 200, result);
       } finally {busy = false;}
-    } catch (error) {return json(res, 400, {error: error.message || 'Could not complete the request.'});}
+    } catch (error) {res.shouldKeepAlive = false; return json(res, error.status || 400, {error: error.message || 'Could not complete the request.'});}
   });
+  server.maxConnections = 32;
+  server.maxRequestsPerSocket = 100;
+  server.keepAliveTimeout = 5000;
   return server;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
