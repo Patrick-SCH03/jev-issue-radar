@@ -6,9 +6,9 @@ import {resolve} from 'node:path';
 import {rankCandidates} from './lib/core.mjs';
 import {loadRepositoryIssue} from './lib/github.mjs';
 import {compareIssues} from './lib/jev.mjs';
-import {demoSource, demoIssues, demoDecision} from './data/demo.mjs';
+import {demoSnapshot} from './data/demo.mjs';
 
-export const APP_VER = '0.1.1';
+export const APP_VER = '0.2.0';
 export function createApp({env = process.env, load = loadRepositoryIssue, compare = compareIssues, now = Date.now, bodyTimeoutMs = 5000} = {}) {
   const snapshots = new Map();
   const csrf = randomUUID();
@@ -66,7 +66,7 @@ export function createApp({env = process.env, load = loadRepositoryIssue, compar
         res.writeHead(200, {'Content-Type': contentType}); return res.end(bytes);
       }
       if (req.method === 'GET' && path === '/api/status') return json(res, 200, {version: APP_VER, liveEnabled, keyConfigured, remainingCalls: maxCalls - usedCalls, csrf});
-      if (req.method === 'GET' && path === '/api/demo') return json(res, 200, {mode: 'demo', source: demoSource, candidates: rankCandidates(demoSource, demoIssues).map(x => ({...x, decision: demoDecision(x.issue)})).sort((a,b) => ({duplicate:0,related:1,insufficient:2,distinct:3}[a.decision.relation] - {duplicate:0,related:1,insufficient:2,distinct:3}[b.decision.relation])), coverage: {repository: 'example/atlas-notes', issueCount: 4, limited: false, description: 'Four synthetic issues with hand-authored decisions. These are not measured Jev results.'}});
+      if (req.method === 'GET' && path === '/api/demo') return json(res, 200, demoSnapshot());
       if (req.method !== 'POST' || !['/api/preview', '/api/analyze'].includes(path)) return json(res, 404, {error: 'Page not found.'});
       if (req.headers['x-radar-token'] !== csrf || !req.headers['content-type']?.startsWith('application/json')) return json(res, 403, {error: 'Refresh the page and try again.'});
       if (busy) {res.shouldKeepAlive = false; return json(res, 409, {error: 'Another request is in progress. Please wait.'});}

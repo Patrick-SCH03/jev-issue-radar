@@ -1,0 +1,29 @@
+{
+  "kind": "Curated public duplicate references; not an independently sampled benchmark",
+  "selectedBeforeRun": true,
+  "cases": [
+    {
+      "id": "vscode-remote-icons",
+      "source": "https://github.com/microsoft/vscode/issues/336130",
+      "canonical": "https://github.com/microsoft/vscode/issues/334144",
+      "reference": "https://github.com/microsoft/vscode/issues/336130#issuecomment-5664000148",
+      "confirmation": "https://github.com/microsoft/vscode/issues/336130#issuecomment-5664039857",
+      "description": "Missing activity-bar icons after an update; the discussion points to a Remote-SSH icon-loading report and the repository closed it as a duplicate."
+    },
+    {
+      "id": "node-iso-month",
+      "source": "https://github.com/nodejs/node/issues/64176",
+      "canonical": "https://github.com/nodejs/node/issues/63041",
+      "reference": "https://github.com/nodejs/node/issues/64176#issuecomment-4822940572",
+      "description": "Temporal month names are missing; a repository member identifies an earlier Intl.DateTimeFormat issue involving the iso8601 calendar."
+    },
+    {
+      "id": "node-error-inspection",
+      "source": "https://github.com/nodejs/node/issues/60948",
+      "canonical": "https://github.com/nodejs/node/issues/60717",
+      "reference": "https://github.com/nodejs/node/issues/60948#issuecomment-3610948026",
+      "confirmation": "https://github.com/nodejs/node/issues/60948#issuecomment-3611411159",
+      "description": "Logging a Zod-like error fails in Node 24.11.1; the reporter links the earlier util.inspect report and a repository member confirms the same property-descriptor problem."
+    }
+  ]
+}

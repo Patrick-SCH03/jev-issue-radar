@@ -8,3 +8,4 @@ node_modules/
 artifacts/
 reports/
 *.tmp
+dist/

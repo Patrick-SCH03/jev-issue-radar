@@ -1,4 +1,4 @@
-import {normalizeIssue, pairState, parseDecision} from '../lib/core.mjs';
+import {normalizeIssue, pairState, parseDecision, rankCandidates} from '../lib/core.mjs';
 
 const raw = (number, title, body, state = 'open') => ({number, title, body, state, html_url: `https://github.com/example/atlas-notes/issues/${number}`, labels: ['editor'], updated_at: '2026-09-20T00:00:00Z'});
 export const demoSource = normalizeIssue(raw(248, 'Pressing Enter duplicates the last character during Korean input', 'Environment: Windows 11, Chrome 128, Atlas Notes 2.4\nSteps: type Korean in the editor and press Enter before IME composition ends.\nActual: the final character is duplicated before the newline.\nExpected: commit the composition once and insert a newline.'));
@@ -19,4 +19,11 @@ export function demoDecision(candidate) {
   const [relation, reason, source, evidence, confidence] = annotations[candidate.number];
   const answers = Object.fromEntries(Object.entries({relation, reason, source_evidence: source, candidate_evidence: evidence}).map(([key, choice]) => [key, {type: 'choice', choice, confidence}]));
   return {...parseDecision({answers}, pairState(demoSource, candidate)), latencyMs: null, costUsd: 0, model: 'demo-fixture'};
+}
+
+export function demoSnapshot() {
+  const order = {duplicate: 0, related: 1, insufficient: 2, distinct: 3};
+  return {mode: 'demo', source: demoSource,
+    candidates: rankCandidates(demoSource, demoIssues).map(item => ({...item, decision: demoDecision(item.issue)})).sort((a, b) => order[a.decision.relation] - order[b.decision.relation]),
+    coverage: {repository: 'example/atlas-notes', issueCount: 4, limited: false, description: 'Four synthetic issues with hand-authored decisions. These are not measured Jev results.'}};
 }

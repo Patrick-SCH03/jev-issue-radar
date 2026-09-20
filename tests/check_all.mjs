@@ -2,13 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import http from 'node:http';
-import {readFile} from 'node:fs/promises';
+import {readFile, mkdtemp, rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {buildDemo} from '../scripts/build-demo.mjs';
 import {readJson} from '../lib/http.mjs';
 import {parseIssueUrl,normalizeIssue,rankCandidates,evidenceLines,pairState,decisionQuestions,parseDecision,LIMITS} from '../lib/core.mjs';
 import {compareIssues} from '../lib/jev.mjs';
 import {loadRepositoryIssue} from '../lib/github.mjs';
 import {createApp} from '../server.mjs';
-import {demoSource,demoIssues,demoDecision} from '../data/demo.mjs';
+import {demoSource,demoIssues,demoDecision,demoSnapshot} from '../data/demo.mjs';
 
 const state=()=>pairState(demoSource,demoIssues[0]);
 const valid=(patch={})=>({answers:Object.fromEntries(Object.entries({relation:'duplicate',reason:'same_reproduction',source_evidence:'L3',candidate_evidence:'L3',...patch}).map(([key,choice])=>[key,{type:'choice',choice,confidence:0.95}]))});
@@ -280,4 +284,17 @@ test('translated report keeps measured choices, costs and original provenance ex
   assert.equal(report.presentation.translated,true);assert.match(report.presentation.originalReport,/2c6a807/);
   assert.deepEqual(report.attempts.map(x=>x.relation),['duplicate','distinct','distinct','related']);
   assert.equal(report.matches,2);assert.ok(Math.abs(report.totalKnownCostUsd-0.000294084)<1e-12);
+});
+
+test('public artifact embeds the same synthetic snapshot and blocks outbound connections',async t=>{
+  const folder=await mkdtemp(join(tmpdir(),'jev-demo-test-'));
+  t.after(()=>rm(folder,{recursive:true,force:true}));
+  const output=pathToFileURL(folder+'/');const build=await buildDemo(output);
+  assert.equal(build.files.length,4);assert.ok(build.files.every(file=>!file.includes('server')&&!file.includes('env')));
+  const html=await readFile(new URL('index.html',output),'utf8');
+  const embedded=JSON.parse(html.match(/id="sample-data">([\s\S]*?)<\/script>/)[1]);
+  assert.deepEqual(embedded,demoSnapshot());assert.match(html,/connect-src 'none'/);
+  assert.match(html,/data-hosted-demo="true"/);assert.match(html,/id="search" class="search-card" hidden/);
+  assert.ok(!html.includes('<script>'));assert.ok(!html.includes('<style>'));
+  for(const asset of build.files.filter(x=>/\.(js|css)$/.test(x)))assert.ok(html.includes('./'+asset));
 });
