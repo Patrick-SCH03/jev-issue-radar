@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import http from 'node:http';
 import {parseIssueUrl,normalizeIssue,rankCandidates,evidenceLines,pairState,decisionQuestions,parseDecision,LIMITS} from '../lib/core.mjs';
-import {compareIssues,JEV_ENDPOINT} from '../lib/jev.mjs';
+import {compareIssues} from '../lib/jev.mjs';
 import {loadRepositoryIssue} from '../lib/github.mjs';
 import {createApp} from '../server.mjs';
 import {demoSource,demoIssues,demoDecision} from '../data/demo.mjs';
@@ -92,7 +92,7 @@ test('related and distinct are not converted into duplicate by high confidence',
 });
 test('provider sends typed choices to the dedicated OpenRouter endpoint',async()=>{
   let request;const result=await compareIssues(demoSource,demoIssues[0],{apiKey:'test-only-not-real',fetchImpl:async(url,options)=>{request={url,options};return Response.json({...valid(),model:'test-model',usage:{cost:0.0001}});}});
-  assert.equal(request.url,JEV_ENDPOINT);assert.equal(request.options.method,'POST');
+  assert.equal(request.url,'https://openrouter.ai/api/alpha/decisions');assert.equal(request.options.method,'POST');
   const sent=JSON.parse(request.options.body);assert.equal(sent.questions.relation.type,'choice');
   assert.equal(sent.model,'typesafe/jev-1.13');assert.equal(result.costUsd,0.0001);
   assert.ok(!JSON.stringify(result).includes('test-only-not-real'));
