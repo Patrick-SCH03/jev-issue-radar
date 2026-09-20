@@ -8,6 +8,7 @@ Issue Radar is an experimental, evidence-based GitHub triage tool. Small, focuse
 node server.mjs
 node --test tests/check_all.mjs
 node scripts/check-syntax.mjs
+node scripts/check-language.mjs
 ~~~
 
 Node.js 22+ is required. The app and core tests have no third-party dependencies. The tests make no external requests; they use ephemeral local HTTP servers and mock providers.
@@ -30,6 +31,8 @@ Discuss large behavioral changes in an issue first. Include a concrete input, ex
 5. Explain the resulting behavior, validation, and any remaining limitations.
 
 Use Conventional Commits, such as feat(retrieval): add normalized error tokens or fix(evidence): reject unknown line identifiers. Keep documentation changes separate where practical.
+
+Use English for source comments, UI copy, documentation, fixtures, and commit messages. CI checks for leftover Hangul text; issue reports supplied by users may still use any language. Historical measurements must retain their original provenance when display text is translated.
 
 The CI workflow runs syntax and offline checks. Publishing, deployment, and catalog submissions are separate actions.
 

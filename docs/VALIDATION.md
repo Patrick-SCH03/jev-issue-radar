@@ -2,6 +2,8 @@
 
 Date: 2026-09-20. This record covers execution, integration, and failure handling of the local MVP. It does not establish duplicate-detection quality on real repositories.
 
+These are initial release checks. The [0.1.1 security and performance review](SECURITY-PERFORMANCE.md) records the expanded regression suite, browser injection checks, and local before/after measurements.
+
 ## Local checks
 
 | Check | Command | Result |
@@ -43,15 +45,15 @@ Each request contained four Choice questions: relation, reason, source_evidence,
 - Agreement with predefined example labels: 2/4.
 - Total provider-reported cost: **US$0.000294084**.
 - Calls with unknown cost: zero.
-- [Archived response metadata and decisions](live-smoke-2026-09-20.json) contain no API keys or HTTP headers.
+- [Response metadata and translated decisions](live-smoke-2026-09-20.json) contain no API keys or HTTP headers. The file explicitly identifies its translated presentation.
 
 These four pairs are neither representative nor independently labeled. The same author prepared the examples, expectations, and question design. The related/distinct boundary for #187 needs clarification. The result cannot establish general accuracy, precision, recall, or an advantage over another model. Expected labels were not changed to match the outputs, and prompts were not repeatedly tuned on these cases.
 
 ### Localization and provenance
 
-The measured inputs were Korean/English examples. They remain unchanged in data/evaluation-fixtures.mjs. Archived response fields and selected quotations are preserved as originally recorded, including Korean labels.
+The measured inputs were Korean/English examples. The unchanged [original fixtures](https://github.com/Patrick-SCH03/jev-issue-radar/blob/2c6a807d8a3fb30adde251d52fac484858f56628/data/evaluation-fixtures.mjs) and [original report](https://github.com/Patrick-SCH03/jev-issue-radar/blob/2c6a807d8a3fb30adde251d52fac484858f56628/docs/live-smoke-2026-09-20.json) remain available at that immutable commit.
 
-The default UI and its illustrative cases were later translated into English. Those English demo cases were **not** sent to the paid API and must not be presented as the inputs to this measurement.
+The current UI, fixtures, labels, and report quotations are in English. The report's presentation metadata identifies translated text; numeric measurements, selected choices, and evidence IDs are unchanged. Current evaluation fixtures reuse the English examples for future approved runs. Those English cases were **not** sent to the paid API and must not be presented as the inputs to this measurement. No additional paid calls were made for translation or the security/performance audit.
 
 ## Environment issues resolved
 

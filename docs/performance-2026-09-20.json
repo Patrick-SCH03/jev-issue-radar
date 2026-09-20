@@ -1,0 +1,75 @@
+{
+  "kind": "Single-machine offline benchmark; no live provider latency or quality claims",
+  "before": {
+    "label": "before",
+    "createdAt": "2026-09-20T14:31:06.896Z",
+    "baseCommit": "2c6a807d8a3fb30adde251d52fac484858f56628",
+    "environment": {
+      "node": "v22.23.2",
+      "platform": "win32",
+      "arch": "x64",
+      "cpu": "AMD Ryzen 5 7500F 6-Core Processor             "
+    },
+    "workload": {
+      "issues": 300,
+      "bodyCharactersPerIssue": 12000,
+      "warmupIterations": 5,
+      "network": "Loopback only; GitHub is stubbed; Jev is never called"
+    },
+    "ranking": {
+      "samples": 30,
+      "p50Ms": 88.29,
+      "p95Ms": 103.87,
+      "maxMs": 104.7
+    },
+    "demoHttp": {
+      "samples": 30,
+      "p50Ms": 15.24,
+      "p95Ms": 16.02,
+      "maxMs": 16.04
+    },
+    "previewHttp": {
+      "samples": 20,
+      "p50Ms": 96.1,
+      "p95Ms": 117.51,
+      "maxMs": 140.76
+    },
+    "maxRssMiB": 295.6
+  },
+  "after": {
+    "label": "after",
+    "createdAt": "2026-09-20T14:38:57.773Z",
+    "baseCommit": "2c6a807d8a3fb30adde251d52fac484858f56628",
+    "environment": {
+      "node": "v22.23.2",
+      "platform": "win32",
+      "arch": "x64",
+      "cpu": "AMD Ryzen 5 7500F 6-Core Processor             "
+    },
+    "workload": {
+      "issues": 300,
+      "bodyCharactersPerIssue": 12000,
+      "warmupIterations": 5,
+      "network": "Loopback only; GitHub is stubbed; Jev is never called"
+    },
+    "ranking": {
+      "samples": 30,
+      "p50Ms": 30.71,
+      "p95Ms": 32.82,
+      "maxMs": 32.87
+    },
+    "demoHttp": {
+      "samples": 30,
+      "p50Ms": 15.56,
+      "p95Ms": 16.33,
+      "maxMs": 16.43
+    },
+    "previewHttp": {
+      "samples": 20,
+      "p50Ms": 46.67,
+      "p95Ms": 53.1,
+      "maxMs": 54.92
+    },
+    "maxRssMiB": 115.63
+  }
+}

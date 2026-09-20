@@ -167,7 +167,7 @@ JEV_ENABLE_LIVE=1 node server.mjs
 | OPENROUTER_API_KEY | Unset | Server-side credential for paid comparisons. |
 | JEV_ENABLE_LIVE | Off | Set to 1 to allow paid analysis. |
 | JEV_MODEL | typesafe/jev-1.13 | The version used in the recorded integration check. |
-| JEV_MAX_CALLS | 20 | Per-process request cap; maximum 100. Not a dollar budget. |
+| JEV_MAX_CALLS | 20 | Per-process request cap, integer 1–100; invalid values stop startup. Not a dollar budget. |
 | PORT | 4318 | Loopback server port. |
 
 You can opt into the moving model alias with JEV_MODEL=~typesafe/jev-latest. Results may change. Environment files are not loaded automatically. Use account-level limits in OpenRouter for a dollar spending cap.
@@ -177,9 +177,12 @@ Run the checks:
 ~~~bash
 node --test tests/check_all.mjs
 node scripts/check-syntax.mjs
+node scripts/check-language.mjs
 ~~~
 
 Optional browser checks require Playwright and an installed browser. PLAYWRIGHT_MODULE can point to a local module; PLAYWRIGHT_CHANNEL=msedge uses installed Edge.
+
+Run `node scripts/benchmark.mjs current` for a reproducible local workload without external APIs. See the [security and performance review](docs/SECURITY-PERFORMANCE.md) for measured results and the [security model](SECURITY.md) for operating limits.
 
 ## API
 
@@ -220,7 +223,7 @@ Four original Korean/English synthetic pairs were sent once each to Jev. All cal
 
 Total provider-reported cost: **US$0.000294084**. No unknown-cost calls. These are small-sample integration observations, not performance promises or an independent evaluation. The related/distinct boundary itself needs a clearer labeling protocol.
 
-[Raw results](docs/live-smoke-2026-09-20.json) · [Full validation notes](docs/VALIDATION.md)
+[Results with English translations and original-source links](docs/live-smoke-2026-09-20.json) · [Full validation notes](docs/VALIDATION.md)
 
 Useful next contributions are independently labeled real issue pairs, recall@5 evaluation, clearer relationship criteria, and retrieval improvements. Please preserve a held-out set rather than fitting prompts to the demo.
 
