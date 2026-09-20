@@ -1,0 +1,15 @@
+{
+  "name": "jev-issue-radar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evidence-first GitHub duplicate issue triage powered by Jev through OpenRouter",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/check_all.mjs",
+    "check": "node scripts/check-syntax.mjs",
+    "smoke:live": "node scripts/live-smoke.mjs"
+  },
+  "license": "MIT"
+}
