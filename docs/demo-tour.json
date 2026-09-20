@@ -1,0 +1,14 @@
+{
+  "kind": "Actual public sample UI screenshots; hand-authored synthetic decisions",
+  "width": 1180,
+  "height": 800,
+  "frames": 5,
+  "durationMs": 15000,
+  "captions": [
+    "Open the public sample: no setup and no live AI",
+    "Filter likely duplicates and inspect both passages",
+    "Compare a related report with a different trigger",
+    "Sparse reports stay marked as insufficient",
+    "Review the same evidence in dark mode"
+  ]
+}

@@ -3,15 +3,19 @@
 
 # Jev Issue Radar
 
-**Find duplicate GitHub issues. Show the evidence. Keep maintainers in control.**
+**Find likely duplicate GitHub issues, with the evidence side by side.**
 
 A read-only triage dashboard powered by TypeSafe Jev through OpenRouter.
 
 [![CI](https://github.com/Patrick-SCH03/jev-issue-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/Patrick-SCH03/jev-issue-radar/actions/workflows/ci.yml)
 [![Listed on Awesome Jev](https://img.shields.io/badge/Awesome_Jev-listed-2261d8)](https://github.com/logicrw/awesome-jev-projects)
 
-[Quickstart](#quickstart) · [How it works](#how-it-works) · [Validation](docs/VALIDATION.md) · [Contributing](CONTRIBUTING.md)
+[**Try the public demo →**](https://patrick-sch03.github.io/jev-issue-radar/) · [Run locally](#quickstart) · [Real-case checks](docs/PUBLIC-CASES.md) · [Contributing](CONTRIBUTING.md)
 </div>
+
+![15-second tour of the public sample: filter duplicates, compare evidence, inspect related and sparse reports, and switch themes](docs/demo-tour.gif)
+
+**No signup, installation, or API key needed for the public sample.** It contains four synthetic reports and clearly labeled, hand-authored decisions. Use the local app to retrieve real public GitHub issues and opt into paid Jev comparisons. [Static screenshot](docs/demo.png) · [What the demo does](docs/DEMO.md)
 
 ---
 
@@ -26,6 +30,8 @@ Issue URL → retrieve candidates → Jev Choice → inspect original evidence
 ~~~
 
 **Status: experimental MVP.** The integration works; duplicate-detection quality on real repositories has not been established. In the initial four-pair synthetic smoke test, two relationships matched the author's expected labels. See the full [results and limitations](docs/VALIDATION.md).
+
+In a later check of three preselected public duplicate pairs, **0/3 canonical issues reached the top five**: all were outside the recent-300-item scan. This is a documented retrieval limit, not a Jev classification result. [Cases, source references, and reproducible results](docs/PUBLIC-CASES.md).
 
 ## Stack
 
@@ -72,7 +78,7 @@ A duplicate is displayed only when both evidence IDs exist, its reason is compat
 
 ![Interactive issue comparison dashboard](docs/demo.png)
 
-The default English demo contains synthetic issues and hand-authored decisions. Its confidence values are illustrative, not measured model outputs. The original Korean/English cases used for the paid integration check are preserved separately in [data/evaluation-fixtures.mjs](data/evaluation-fixtures.mjs).
+The English demo contains synthetic issues and hand-authored decisions. Its confidence values are illustrative, not measured model outputs. Current [evaluation fixtures](data/evaluation-fixtures.mjs) use English; immutable links to the original measured inputs are in the [provenance notes](docs/VALIDATION.md#localization-and-provenance).
 
 ## Features
 
@@ -85,7 +91,7 @@ The default English demo contains synthetic issues and hand-authored decisions. 
 | Conservative duplicate display | Downgrades unsupported or inconsistent duplicate judgments. |
 | Filters and full reports | Inspect any candidate and its model metadata. |
 | JSON export | Export reports, decisions, scan coverage, latency, and reported cost. |
-| No-key demo | Explore the workflow without credentials or paid calls. |
+| Public no-key demo | Explore the sample in your browser without installation, credentials, or paid calls. |
 | Responsive themes | Light and dark layouts for desktop and mobile. |
 | Repeat-request protection | Reuses completed results for the same preview ID for up to 10 minutes. |
 
@@ -130,15 +136,21 @@ lib/core.mjs                  # URL validation, retrieval, evidence rules
 lib/github.mjs                # Public GitHub issue reader
 lib/jev.mjs                   # Real OpenRouter Jev decision call
 data/demo.mjs                 # English UI examples and fixed decisions
-data/evaluation-fixtures.mjs   # Original multilingual integration cases
+data/evaluation-fixtures.mjs   # English fixtures for future approved runs
+data/public-cases.json         # Source-linked real duplicate references
 tests/check_all.mjs            # Offline logic and local HTTP tests
 scripts/check-syntax.mjs       # Module and inline-script syntax checks
 scripts/browser-smoke.mjs      # Optional browser interaction checks
 scripts/live-smoke.mjs         # Explicitly approved paid smoke test
+scripts/build-demo.mjs         # Credential-free static demo artifact
+scripts/browser-demo.mjs       # Public demo checks, locally or after deployment
+scripts/check-public-cases.mjs # Free, read-only retrieval checks on public cases
 docs/                         # Screenshot, measured results, limitations
 ~~~
 
 ## Quickstart
+
+**Just exploring? [Open the public sample](https://patrick-sch03.github.io/jev-issue-radar/).** The steps below run the full application on your own computer.
 
 **Node.js 22 or newer. No npm install required.**
 
@@ -148,7 +160,7 @@ cd jev-issue-radar
 node server.mjs
 ~~~
 
-Open **http://127.0.0.1:4318**. The demo and public GitHub candidate preview work without an OpenRouter key.
+After the server starts, open `http://127.0.0.1:4318` in your browser and keep the terminal running. This address only works on your own computer while the server is running. The local demo and public GitHub candidate preview work without an OpenRouter key.
 
 To enable real comparisons, set OPENROUTER_API_KEY in your environment, then:
 
@@ -181,6 +193,8 @@ node scripts/check-language.mjs
 ~~~
 
 Optional browser checks require Playwright and an installed browser. PLAYWRIGHT_MODULE can point to a local module; PLAYWRIGHT_CHANNEL=msedge uses installed Edge.
+
+The public sample is built with `node scripts/build-demo.mjs` and deployed from the generated `dist/` directory by GitHub Actions. It contains no backend or API key. See [demo development and deployment](docs/DEMO.md).
 
 Run `node scripts/benchmark.mjs current` for a reproducible local workload without external APIs. See the [security and performance review](docs/SECURITY-PERFORMANCE.md) for measured results and the [security model](SECURITY.md) for operating limits.
 

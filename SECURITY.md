@@ -2,6 +2,8 @@
 
 Jev Issue Radar is a single-user tool that listens on `127.0.0.1`. It is not designed to be exposed through a public tunnel, reverse proxy, or shared server. Use a maintained Node.js release with current security patches.
 
+The separate [public sample](https://patrick-sch03.github.io/jev-issue-radar/) is a static site with synthetic data. It contains no server, credentials, live issue import, or paid analysis endpoints. Its build packages only the sample assets; the localhost server is not exposed by the Pages deployment.
+
 ## Data and credentials
 
 - GitHub access is read-only and unauthenticated. Only public issue titles, bodies, labels, and state are imported.

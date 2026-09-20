@@ -1,0 +1,135 @@
+{
+  "createdAt": "2026-09-20T15:00:16.418Z",
+  "baseCommit": "5878ba97d70d8aed10a2a628f224a8612d4e870b",
+  "kind": "Current-window retrieval check of three preselected public duplicate pairs; not model accuracy",
+  "paidCalls": 0,
+  "cases": [
+    {
+      "id": "vscode-remote-icons",
+      "source": "https://github.com/microsoft/vscode/issues/336130",
+      "canonical": "https://github.com/microsoft/vscode/issues/334144",
+      "reference": "https://github.com/microsoft/vscode/issues/336130#issuecomment-5664000148",
+      "confirmation": "https://github.com/microsoft/vscode/issues/336130#issuecomment-5664039857",
+      "description": "Missing activity-bar icons after an update; the discussion points to a Remote-SSH icon-loading report and the repository closed it as a duplicate.",
+      "status": "ok",
+      "canonicalInScan": false,
+      "canonicalTop5Rank": null,
+      "candidates": [
+        {
+          "url": "https://github.com/microsoft/vscode/issues/336902",
+          "score": 201.0767
+        },
+        {
+          "url": "https://github.com/microsoft/vscode/issues/336917",
+          "score": 194.6771
+        },
+        {
+          "url": "https://github.com/microsoft/vscode/issues/336893",
+          "score": 186.8062
+        },
+        {
+          "url": "https://github.com/microsoft/vscode/issues/336908",
+          "score": 185.4438
+        },
+        {
+          "url": "https://github.com/microsoft/vscode/issues/336897",
+          "score": 181.9217
+        }
+      ],
+      "coverage": {
+        "repository": "microsoft/vscode",
+        "fetched": 300,
+        "issueCount": 173,
+        "pages": 3,
+        "limited": true,
+        "description": "Scans up to 300 recently updated items, excluding pull requests. This is not a full repository search."
+      },
+      "elapsedMs": 2444
+    },
+    {
+      "id": "node-iso-month",
+      "source": "https://github.com/nodejs/node/issues/64176",
+      "canonical": "https://github.com/nodejs/node/issues/63041",
+      "reference": "https://github.com/nodejs/node/issues/64176#issuecomment-4822940572",
+      "description": "Temporal month names are missing; a repository member identifies an earlier Intl.DateTimeFormat issue involving the iso8601 calendar.",
+      "status": "ok",
+      "canonicalInScan": false,
+      "canonicalTop5Rank": null,
+      "candidates": [
+        {
+          "url": "https://github.com/nodejs/node/issues/60020",
+          "score": 27.8913
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/42774",
+          "score": 26.0629
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/58245",
+          "score": 25.66
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/65110",
+          "score": 25.2375
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/66105",
+          "score": 25.1219
+        }
+      ],
+      "coverage": {
+        "repository": "nodejs/node",
+        "fetched": 300,
+        "issueCount": 58,
+        "pages": 3,
+        "limited": true,
+        "description": "Scans up to 300 recently updated items, excluding pull requests. This is not a full repository search."
+      },
+      "elapsedMs": 2130
+    },
+    {
+      "id": "node-error-inspection",
+      "source": "https://github.com/nodejs/node/issues/60948",
+      "canonical": "https://github.com/nodejs/node/issues/60717",
+      "reference": "https://github.com/nodejs/node/issues/60948#issuecomment-3610948026",
+      "confirmation": "https://github.com/nodejs/node/issues/60948#issuecomment-3611411159",
+      "description": "Logging a Zod-like error fails in Node 24.11.1; the reporter links the earlier util.inspect report and a repository member confirms the same property-descriptor problem.",
+      "status": "ok",
+      "canonicalInScan": false,
+      "canonicalTop5Rank": null,
+      "candidates": [
+        {
+          "url": "https://github.com/nodejs/node/issues/66001",
+          "score": 37.7884
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/65756",
+          "score": 36.0427
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/55077",
+          "score": 34.8706
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/66158",
+          "score": 34.0786
+        },
+        {
+          "url": "https://github.com/nodejs/node/issues/63436",
+          "score": 33.9371
+        }
+      ],
+      "coverage": {
+        "repository": "nodejs/node",
+        "fetched": 300,
+        "issueCount": 58,
+        "pages": 3,
+        "limited": true,
+        "description": "Scans up to 300 recently updated items, excluding pull requests. This is not a full repository search."
+      },
+      "elapsedMs": 343
+    }
+  ],
+  "completed": 3,
+  "foundInTop5": 0
+}
